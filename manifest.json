@@ -6,6 +6,16 @@
   "action": {
     "default_popup": "popup.html"
   },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.spanishdict.com/conjugate/*"
+      ],
+      "js": [
+        "spanishdict_conjugation_parser.js"
+      ]
+    }
+  ],
   "permissions": [
     "tabs"
   ],

@@ -28,8 +28,11 @@ chrome.tabs.query({
     const tab = tabs[0];
 
     const testParagraph = document.getElementById("testParagraph");
-    if (tab.url.includes("spanishdict.com")) {
-        testParagraph.textContent += "This is spanishdict.com: yes. ";
+    if (tab.url.includes("spanishdict.com/conjugate")) {
+        chrome.tabs.sendMessage(tab.id, {type: "EXTRACT_CONJUGATIONS"}, ({conjugations}) => {
+            console.log("Received conjugations from the content script:", conjugations)
+            testParagraph.textContent += " Found conjugations: " + conjugations.join(", ")
+        })
     }
 
     // call AnkiConnect
