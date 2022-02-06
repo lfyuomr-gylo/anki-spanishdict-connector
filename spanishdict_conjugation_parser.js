@@ -5,7 +5,7 @@ const isOneOf = (value, ...possibleValues) => {
 // TODO: detect the word itself
 
 const findConjugationTables = (document) => {
-    // we expect conjugationTables to have the following format
+    // we expect verb conjugation to be presented in the following format:
     // <div> <-- grandParent -->
     //  <div class="tenseHeader.*"> <-- firstParentSibling -->
     //    <div class="tenseLabelLink.*"> <-- tenseLabelElem -->
@@ -14,8 +14,6 @@ const findConjugationTables = (document) => {
     //  </div>
     //  <div class="vtableWrapper.*"> <-- parent -->
     //   <table> <-- table -->
-    //     <tbody>
-    //     </tbody>
     //   </table>
     //  </div>
     // </div>
@@ -71,14 +69,78 @@ const findConjugationTables = (document) => {
 
         conjugationTables.push({
             tenseClass: tenseType,
-            tableElem: table
+            tableElem: table,
         })
     }
 
     return conjugationTables
 }
 
-// TODO: parse conjugation tables.
+const parseConjugationTableOrNull = (table) => {
+    // Conjugation table is expected to have the following format:
+    // <table>
+    //   <tbody>
+    //     <tbody>
+    //       <tr>
+    //         <td><-- empty --></td>
+    //         <td>TenseName1</td>
+    //         <-- ... more tenses ... -->
+    //       </tr>
+    //       <tr>
+    //         <td>Yo</td>
+    //         <td>verb conjugated in the first tense with pronoun yo</td>
+    //         <-- ... more tenses ... -->
+    //       </tr>
+    //       <-- ... more forms ... -->
+    //     </tbody>
+    //   </tbody>
+    // </table>
+
+    if (table.children.length < 1 || table.children[0].tagName !== "TBODY") {
+        console.log("Table's first child is not a tbody:", table)
+        return null
+    }
+    const tbody = table.children[0]
+    const lines = []
+    for (let lineIdx = 0; lineIdx < tbody.children; lineIdx++) {
+        const tr = tbody.children[lineIdx]
+        if (tr.tagName !== "TR") {
+            console.warn("Unexpected tag inside tbody! Expected tr but got: ", tr)
+            return null
+        }
+
+        const line = []
+        for (let colIdx = 0; colIdx < tr.children.length; colIdx++) {
+            const td = tr.children[colIdx]
+            if (td.tagName !== "TD") {
+                console.warn("Unexpected tag inside tr! Expected td, but got: ", td)
+                return null
+            }
+            // TODO: td actually contains a deeply nested <a> tag that links to the examples with right meaning
+            //       we'd better extract that URL here
+            line.push(td.textContent)
+        }
+        lines.push(line)
+    }
+
+    console.log("Parsed conjugation table: ", lines)
+    if (lines.length < 1) {
+        console.warn("Conjugation table has no lines! Skip it")
+        return null
+    }
+
+    // TODO: check if it works
+    const conjugations = [] // { tense: "Present", pronoun: "yo", word: "leo" }
+    for (let lineIdx = 1; lineIdx < lines.length; lineIdx++) {
+        const pronoun = lines[lineIdx][0]
+        for (let colIdx = 1; colIdx < lines[lineIdx].length; colIdx++) {
+            const tense = lines[0][colIdx]
+            const word = lines[lineIdx][colIdx]
+            conjugations.push({tense, pronoun, word})
+        }
+    }
+    return conjugations
+}
 
 window.onload = function () {
     console.log("Hello from content script!")
@@ -86,6 +148,7 @@ window.onload = function () {
         switch (msg.type) {
             case "EXTRACT_CONJUGATIONS":
                 const conjugations = findConjugationTables(document).map(x => x.tenseClass)
+                // TODO: parse conjugations and return full result
                 let response = {
                     conjugations
                 };
